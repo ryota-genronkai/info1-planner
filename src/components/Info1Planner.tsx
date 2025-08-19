@@ -292,13 +292,13 @@ export default function Info1Planner() {
         <div className="p-4 md:p-6">
           <Tabs value={tab} onValueChange={setTab}>
             <TabsList className="grid grid-cols-4 w-full md:w-auto bg-slate-100 rounded-lg p-1">
-              <TabsTrigger value="plan" className="data-[state=active]:bg-slate-900 data-[state=active]:text-white text-slate-700 rounded-md">プラン</TabsTrigger>
+              <TabsTrigger value="plan" className="data-[state=active]:bg-slate-900 data-[state=active]:text-white text-slate-700 rounded-md">問題解決</TabsTrigger>
               <TabsTrigger value="strategy" className="data-[state=active]:bg-slate-900 data-[state=active]:text-white text-slate-700 rounded-md">全体戦略</TabsTrigger>
               <TabsTrigger value="weekly" className="data-[state=active]:bg-slate-900 data-[state=active]:text-white text-slate-700 rounded-md">週間戦略</TabsTrigger>
               <TabsTrigger value="history" className="data-[state=active]:bg-slate-900 data-[state=active]:text-white text-slate-700 rounded-md">履歴</TabsTrigger>
             </TabsList>
 
-            {/* プラン */}
+            {/* 問題解決 */}
             <TabsContent value="plan" className="mt-6 space-y-6">
               <Card className="bg-white">
                 <CardHeader>
@@ -514,7 +514,7 @@ export default function Info1Planner() {
                   </div>
 
                   {session.strategy.length === 0 ? (
-                    <div className="text-sm text-slate-600">まだ何も追加されていません。プランの「解決策」から追加してください。</div>
+                    <div className="text-sm text-slate-600">まだ何も追加されていません。問題解決の「解決策」から追加してください。</div>
                   ) : (
                     <ul className="space-y-2">
                       {session.strategy.map((st, idx) => (
