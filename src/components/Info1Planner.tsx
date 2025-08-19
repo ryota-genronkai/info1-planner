@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable @next/next/no-img-element */
 import React, { useMemo, useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { Trophy, Undo2, ArrowRight, Notebook, BookOpen, Code2, Target, Workflow, Plus, Trash2, ExternalLink, ImageIcon, CalendarDays } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
 /**
  * 改訂 v7（ビジュアル強化）
@@ -24,13 +26,19 @@ const SUBJECTS: Subject[] = [
   "その他", "情報I", "数学IA", "英語", "国語", "化学基礎", "物理基礎", "生物基礎", "地理", "日本史", "世界史",
 ];
 
-const LINKS = {
+type LinkMap = Record<
+  "A" | "Ov" | "Prac" | "Cet" | "Prog",
+  { title: string; url?: string; img?: string }
+>;
+
+const LINKS: LinkMap = {
   A: { title: "過去問", url: "https://akahon.net/products/detail/26713", img: "https://akahon.net/images/cover/978-4-325-26713-3.jpg" },
   Ov: { title: "概要把握", url: "https://bookclub.kodansha.co.jp/product?item=322109000547", img: "https://cdn.kdkw.jp/cover_1000/322109/322109000547_01.webp" },
-  Prac: { title: "問題演習", url: undefined as string | undefined, img: "https://storage.googleapis.com/studio-cms-assets/projects/9YWywY00qM/s-311x445_webp_fbce2ae6-6375-4e30-8a69-c559d0e024e0.webp" },
-  Cet: { title: "共通テスト対策", url: undefined as string | undefined, img: "https://www.obunsha.co.jp/img/product/detail/035262.jpg" },
-  Prog: { title: "プログラミング演習", url: undefined as string | undefined, img: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSwZuIas28PUqgYzs5HFn-LWKTQ3IwCUm6fmQ&s" },
+  Prac: { title: "問題演習", img: "https://storage.googleapis.com/studio-cms-assets/projects/9YWywY00qM/s-311x445_webp_fbce2ae6-6375-4e30-8a69-c559d0e024e0.webp" },
+  Cet:  { title: "共通テスト対策", img: "https://www.obunsha.co.jp/img/product/detail/035262.jpg" },
+  Prog: { title: "プログラミング演習", img: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSwZuIas28PUqgYzs5HFn-LWKTQ3IwCUm6fmQ&s" },
 };
+
 
 const CAUSE_MAP = [
   { key: "unlearned", label: "未修", to: "Ov", icon: BookOpen, hint: "まだ学んでいない単元がある / 定義や用語が曖昧" },
@@ -39,7 +47,7 @@ const CAUSE_MAP = [
   { key: "coding", label: "プログラミング練習不足", to: "Prog", icon: Code2, hint: "実装経験が少ない・エラー対処が苦手" },
 ] as const;
 
-const NODE_META: Record<string, { title: string; icon: any; color: string; img?: string }> = {
+const NODE_META: Record<string, { title: string; icon: LucideIcon; color: string; img?: string }> = {
   A: { title: "過去問", icon: Target, color: "border-sky-400", img: LINKS.A.img },
   Ov: { title: "概要把握", icon: BookOpen, color: "border-emerald-400", img: LINKS.Ov.img },
   Prac: { title: "問題演習", icon: Notebook, color: "border-indigo-400", img: LINKS.Prac.img },
@@ -74,16 +82,23 @@ function useLocalStorage<T>(key: string, initial: T) {
 
 // 状態
 type StrategyItem = {
-  node: string;
+  node: NodeKey;
   reason: string;
   at: string;
   subject: Subject;
-  months?: number[]; // 複数月
+  months?: number[];
   weekly?: boolean;
-  weekCells?: Record<number,string>; // 0..6
-}
+  weekCells?: Record<number, string>;
+};
 
 type WeekSnapshot = { at: string; rows: Array<{ subject: string; title: string; cells: Record<number,string> }> };
+
+type HistoryItem = {
+  at: string;
+  target: number;
+  prevScore: number;
+  solutions: Solution[];
+};
 
 type Session = {
   subject: Subject;
@@ -91,11 +106,14 @@ type Session = {
   score: number;
   causes: Record<string, boolean>;
   memo: string;
-  history: Array<any>;
+  history: HistoryItem[];   // ← ここ
   strategy: StrategyItem[];
   weekSnapshots: WeekSnapshot[];
   weeklyAutosave?: boolean;
-}
+};
+
+type NodeKey = "A" | "Ov" | "Prac" | "Cet" | "Prog" | "Done";
+type Solution = { node: NodeKey; reason: string };
 
 const initialSession: Session = {
   subject: "その他",
@@ -152,6 +170,7 @@ function DayBar({ value, onChange }: { value?: number; onChange: (d: number)=>vo
 export default function Info1Planner() {
   const [session, setSession] = useLocalStorage<Session>("info1_planner_v7", initialSession);
   const [tab, setTab] = useState("plan");
+  const [activeDay, setActiveDay] = useState<number | undefined>(undefined);
 
   const achieved = session.score >= session.target;
   const isInfo = session.subject === "情報I";
@@ -159,9 +178,9 @@ export default function Info1Planner() {
 
   const selectedCauses = useMemo(() => CAUSE_MAP.filter(c => session.causes[c.key]), [session.causes]);
 
-  const solutions = useMemo(() => {
-    const actions: Array<{ node: string; reason: string }> = [];
-    if (!isInfo) return actions; // 他教科は未対応
+  const solutions: Solution[] = useMemo(() => {
+    const actions: Solution[] = [];
+    if (!isInfo) return actions;
     if (achieved) return [{ node: "Done", reason: "目標点数に到達。振り返り・次の目標設定へ。" }];
     if (isUnlearned) {
       actions.push({ node: "Ov", reason: "未修のため、まずは定義・範囲の把握" });
@@ -169,7 +188,7 @@ export default function Info1Planner() {
       return actions;
     }
     if (selectedCauses.length > 0) {
-      for (const c of selectedCauses) actions.push({ node: c.to, reason: c.label });
+      for (const c of selectedCauses) actions.push({ node: c.to as NodeKey, reason: c.label });
       actions.push({ node: "A", reason: "対策後の再挑戦（達成度チェック）" });
     }
     return actions;
@@ -425,7 +444,7 @@ export default function Info1Planner() {
                               {solutions.map((step, i) => {
                                 const meta = NODE_META[step.node];
                                 const Icon = meta?.icon || ArrowRight;
-                                const link = (LINKS as any)[step.node] as { title: string; url?: string; img?: string } | undefined;
+                                const link = step.node === "Done" ? undefined : LINKS[step.node];
                                 return (
                                   <div key={i} className={`rounded-xl border ${meta?.color||""} p-3 bg-white/60`}>                                    
                                     <div className="flex items-center gap-2 mb-1">
@@ -545,13 +564,17 @@ export default function Info1Planner() {
                 <CardHeader className="flex flex-col gap-2">
                   <CardTitle className="flex items-center gap-2">週間戦略</CardTitle>
                   <div className="flex items-center gap-3 text-xs text-slate-600">
-                    <label className="inline-flex items-center gap-2">
-                      <input type="checkbox" className="accent-slate-900" checked={!!session.weeklyAutosave}
+                    <span className="whitespace-nowrap">注目曜日:</span>
+                    <DayBar value={activeDay} onChange={setActiveDay} />
+                    <label className="inline-flex items-center gap-2 ml-auto">
+                      <input
+                        type="checkbox"
+                        className="accent-slate-900"
+                        checked={!!session.weeklyAutosave}
                         onChange={(e)=>setSession(s=>({...s, weeklyAutosave: e.target.checked}))}
                       />
                       セル入力を自動保存
                     </label>
-                    <span className="ml-auto">行=タスク / 列=月〜日</span>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -564,8 +587,8 @@ export default function Info1Planner() {
                           <tr className="[&>th]:px-2 [&>th]:py-2 [&>th]:text-left">
                             <th className="w-40">教科</th>
                             <th className="w-64">学習段階</th>
-                            {['月','火','水','木','金','土','日'].map((d)=>(
-                              <th key={d} className="w-56">{d}</th>
+                            {['月','火','水','木','金','土','日'].map((d, i)=>(
+                              <th key={d} className={`w-56 ${activeDay===i ? "bg-amber-100" : ""}`}>{d}</th>
                             ))}
                           </tr>
                         </thead>
@@ -576,7 +599,7 @@ export default function Info1Planner() {
                                 <td className="px-2 py-2 align-top"><Badge className="bg-sky-100 text-sky-800 border-sky-200">{st.subject}</Badge></td>
                                 <td className="px-2 py-2 align-top font-medium">{NODE_META[st.node]?.title || st.node}</td>
                                 {Array.from({length:7},(_,i)=>i).map(day => (
-                                  <td key={day} className="px-1 py-1 align-top">
+                                  <td key={day} className={`px-1 py-1 align-top ${activeDay===day ? "bg-amber-50" : ""}`}>
                                     <Textarea
                                       placeholder="やること…"
                                       value={st.weekCells?.[day] || ""}
@@ -657,8 +680,8 @@ export default function Info1Planner() {
                             <span className="text-slate-700">目標{h.target}点 → 前回{h.prevScore}点</span>
                           </div>
                           <div className="mt-2 grid md:grid-cols-2 gap-2">
-                            {h.solutions?.map((st: any, i: number) => (
-                              <div key={i} className="text-xs text-slate-600 flex items-center gap-2">
+                          {h.solutions?.map((st: Solution, i: number) => (
+                                <div key={i} className="text-xs text-slate-600 flex items-center gap-2">
                                 <ArrowRight className="w-3 h-3"/>
                                 <span>{NODE_META[st.node]?.title || st.node}</span>
                                 <span className="opacity-70">— {st.reason}</span>
