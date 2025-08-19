@@ -210,10 +210,18 @@ export default function Info1Planner() {
     toast.success("再挑戦：過去問へ戻しました");
   }
 
-  function addToStrategy(step: { node: string; reason: string }) {
+  function addToStrategy(step: Solution) {
     setSession(s => ({
       ...s,
-      strategy: [...s.strategy, { ...step, at: new Date().toISOString(), subject: s.subject, months: [] }],
+      strategy: [
+        ...s.strategy,
+        {
+          ...step,
+          at: new Date().toISOString(),
+          subject: s.subject,
+          months: [] as number[],   // ← 型を明示
+        },
+      ],      
     }));
     toast("全体戦略に追加しました（実施月は全体戦略タブで設定）");
   }
