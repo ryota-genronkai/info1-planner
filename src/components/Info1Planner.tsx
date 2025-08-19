@@ -1,3 +1,4 @@
+"use client";
 import React, { useMemo, useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -48,19 +49,28 @@ const NODE_META: Record<string, { title: string; icon: any; color: string; img?:
 };
 
 function useLocalStorage<T>(key: string, initial: T) {
+  const isBrowser = typeof window !== "undefined";
+
   const [state, setState] = useState<T>(() => {
+    if (!isBrowser) return initial;
     try {
-      const raw = localStorage.getItem(key);
+      const raw = window.localStorage.getItem(key);
       return raw ? (JSON.parse(raw) as T) : initial;
     } catch {
       return initial;
     }
   });
+
   useEffect(() => {
-    try { localStorage.setItem(key, JSON.stringify(state)); } catch {}
-  }, [key, state]);
+    if (!isBrowser) return;
+    try {
+      window.localStorage.setItem(key, JSON.stringify(state));
+    } catch {}
+  }, [key, state, isBrowser]);
+
   return [state, setState] as const;
 }
+
 
 // 状態
 type StrategyItem = {
