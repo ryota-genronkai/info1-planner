@@ -1045,13 +1045,7 @@ export default function Info1Planner() {
                               .map((st, idx) => (
                                 <tr key={idx} className="border-t">
                                   <td className="px-2 py-2 align-top sticky left-0 z-10 bg-white border-r w-40">
-                                    <Badge
-                                      style={{
-                                        background: "#e6f7fd",
-                                        color: "#036086",
-                                        borderColor: PRIMARY,
-                                      }}
-                                    >
+                                    <Badge style={{ background: "#e6f7fd", color: "#036086", borderColor: PRIMARY }}>
                                       {st.subject}
                                     </Badge>
                                   </td>
