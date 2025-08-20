@@ -199,7 +199,8 @@ type StrategyItem = {
 };
 
 type WeekSnapshot = {
-  at: string;
+  at: string;  
+  weekStart: ISODate;
   rows: Array<{ subject: string; title: string; cells: Record<number, string> }>;
 };
 
@@ -400,15 +401,29 @@ export default function Info1Planner() {
         title: NODE_META[st.node]?.title || st.node,
         cells: st.weekCells || {},
       }));
+
     if (rows.length === 0) {
       toast("週間戦略に項目がありません");
       return;
     }
+
+    const weekStart = session.weeklyStart || toISO(new Date()); // ★ 保存時に週開始を記録
+
     setSession((s) => ({
       ...s,
-      weekSnapshots: [...(s.weekSnapshots || []), { at: new Date().toISOString(), rows }],
+      weekSnapshots: [
+        ...(s.weekSnapshots || []),
+        { at: new Date().toISOString(), weekStart, rows },
+      ],
     }));
-    toast.success("この週の計画を保存しました（履歴に残りました）");
+    toast.success("この週の計画を保存しました（下に履歴として追加されました）");
+  }
+
+  function removeWeekSnapshot(index: number) {
+    setSession((s) => ({
+      ...s,
+      weekSnapshots: (s.weekSnapshots || []).filter((_, i) => i !== index),
+    }));
   }
 
   function removeStrategy(index: number) {
@@ -953,10 +968,14 @@ export default function Info1Planner() {
                       ))}
                     </ul>
                   )}
-
                   {session.strategy.length > 0 && (
                     <div className="pt-1 flex gap-2">
-                      <Button variant="secondary" style={{ background: SECONDARY }} onClick={clearStrategy}>
+                      <Button
+                        variant="secondary"
+                        className="text-white hover:opacity-90 focus:ring-2 focus:ring-[#00a0e9]/30"
+                        style={{ background: PRIMARY, borderColor: PRIMARY }}
+                        onClick={clearStrategy}
+                      >
                         <Trash2 className="w-4 h-4 mr-1" />
                         全削除
                       </Button>
@@ -1057,6 +1076,95 @@ export default function Info1Planner() {
                     <Button onClick={saveWeekSnapshot} className="text-white" style={{ background: PRIMARY }}>
                       この週を保存
                     </Button>
+                    {(session.weekSnapshots?.length || 0) > 0 && (
+                      <div className="space-y-3 pt-2">
+                        <div className="text-sm font-medium text-slate-700">保存済みの週プラン</div>
+
+                        {[...session.weekSnapshots].map((snap, rawIdx) => {
+                          // 新しい順に見せたい → 描画順を逆転
+                          const idx = session.weekSnapshots.length - 1 - rawIdx;
+                          const item = session.weekSnapshots[idx];
+                          const start = (item as any).weekStart || (session.weeklyStart || toISO(new Date())); // 後方互換
+                          const end = addDays(start, 6);
+
+                          return (
+                            <div key={idx} className="rounded-lg border bg-white">
+                              <div className="flex items-center gap-3 px-3 py-2 border-b">
+                                <Badge className="bg-slate-100 text-slate-900 border-slate-200">
+                                  {new Date(item.at).toLocaleString()}
+                                </Badge>
+                                <div className="text-sm text-slate-700">
+                                  週: {start} - {end}
+                                </div>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="ml-auto text-slate-600 hover:text-red-600"
+                                  onClick={() => removeWeekSnapshot(idx)}
+                                >
+                                  削除
+                                </Button>
+                              </div>
+
+                              <div className="overflow-x-auto">
+                                <table className="min-w-full text-sm">
+                                  <thead className="sticky top-0" style={{ background: "#f8fbff" }}>
+                                    <tr>
+                                      <th className="px-2 py-2 text-left sticky left-0 z-10 bg-white border-r w-40">
+                                        教科 / タイトル
+                                      </th>
+                                      {Array.from({ length: 7 }, (_, i) => {
+                                        const d = addDays(start, i);
+                                        const dt = new Date(d);
+                                        const label = `${(dt.getMonth() + 1).toString().padStart(2, "0")}/${dt
+                                          .getDate()
+                                          .toString()
+                                          .padStart(2, "0")}`;
+                                        const wday = ["月", "火", "水", "木", "金", "土", "日"][i];
+                                        return (
+                                          <th key={i} className="px-2 py-2 text-center min-w-[10rem]">
+                                            {label}
+                                            <div className="text-[11px] text-slate-500">{wday}</div>
+                                          </th>
+                                        );
+                                      })}
+                                    </tr>
+                                  </thead>
+                                  <tbody className="[&>tr:nth-child(even)]:bg-slate-50">
+                                    {item.rows.map((row, rIdx) => (
+                                      <tr key={rIdx} className="border-t">
+                                        <td className="px-2 py-2 align-top sticky left-0 z-10 bg-white border-r w-40">
+                                          <div className="flex flex-col gap-1">
+                                            <Badge
+                                              style={{
+                                                background: "#e6f7fd",
+                                                color: "#036086",
+                                                borderColor: PRIMARY,
+                                                width: "fit-content",
+                                              }}
+                                            >
+                                              {row.subject}
+                                            </Badge>
+                                            <div className="text-xs text-slate-700">{row.title}</div>
+                                          </div>
+                                        </td>
+                                        {Array.from({ length: 7 }, (_, day) => (
+                                          <td key={day} className="px-2 py-2 align-top min-w-[10rem]">
+                                            <div className="text-xs whitespace-pre-wrap text-slate-800">
+                                              {row.cells?.[day] || ""}
+                                            </div>
+                                          </td>
+                                        ))}
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
