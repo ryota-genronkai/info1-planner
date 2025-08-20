@@ -564,18 +564,18 @@ export default function Info1Planner() {
                       <div className="border rounded-lg overflow-hidden bg-white mt-1">
                         <select
                           className="w-full p-2 bg-white"
-                          value={session.examYear}
+                          value={session.examType}
                           onChange={(e) =>
                             setSession((s) => ({
                               ...s,
-                              examYear: Number(e.target.value) as ExamYear,
-                              examLabel: `${e.target.value} ${s.examType || ""}`,
+                              examType: e.target.value as ExamType,
+                              examLabel: `${s.examYear || ""} ${e.target.value}`,
                             }))
                           }
                         >
-                          {[2025, 2024, 2023, 2022].map((y) => (
-                            <option key={y} value={y}>
-                              {y}
+                          {["共通テスト 本試験", "共通テスト 追試験", "模試"].map((t) => (
+                            <option key={t} value={t}>
+                              {t}
                             </option>
                           ))}
                         </select>
@@ -1021,8 +1021,9 @@ export default function Info1Planner() {
                           </tr>
                         </thead>
                           <tbody className="[&>tr:nth-child(even)]:bg-slate-50">
-                            {session.strategy.map((st, idx) =>
-                              st.weekly ? (
+                            {session.strategy
+                              .filter((st) => st.weekly)
+                              .map((st, idx) => (
                                 <tr key={idx} className="border-t">
                                   <td className="px-2 py-2 align-top sticky left-0 z-10 bg-white border-r w-40">
                                     <Badge
@@ -1046,8 +1047,7 @@ export default function Info1Planner() {
                                     </td>
                                   ))}
                                 </tr>
-                              ) : null
-                            )}
+                              ))}
                           </tbody>
                       </table>
                     </div>
