@@ -3,7 +3,7 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "./components/ui/input";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
@@ -16,7 +16,7 @@ import type { LucideIcon } from "lucide-react";
  * 改訂 v9
  * - ギャップ入力 UI を削除（要望）
  * - 解決策カード全体クリックで「全体戦略に追加」可能 + 右端に大きめの矢印ボタン
- * - カラートークン: PRIMARY #00a0e9 / SECONDARY #ffcf7f
+ * - カラートークン: PRIMARY #00a0e9 / SECONDARY #f7fcff
  * - 週間計画を7列の簡潔ビューに戻す（Mon-Sun）
  * - 全体戦略に開始日を追加 → 週間計画はその週と同期
  * - 全体戦略行をスリム化（横並び：科目 / 段階 / 説明 / 開始日 / 12ヶ月フィル）
@@ -436,6 +436,14 @@ export default function Info1Planner() {
                               const on = st.monthsRange
                                 ? col >= st.monthsRange.start! && col <= st.monthsRange.end!
                                 : false;
+                              function handleMonthMouseDown(idx: number, col: number): void {
+                                throw new Error("Function not implemented.");
+                              }
+
+                              function handleMonthMouseEnter(idx: number, col: number): void {
+                                throw new Error("Function not implemented.");
+                              }
+
                               return (
                                 <div
                                   key={`m-${m}`}
@@ -527,7 +535,7 @@ export default function Info1Planner() {
                                   </td>
                                 ))}
 
-                                ))}
+                                )){"}"}
                               </tr>
                             ) : null
                           ))}
