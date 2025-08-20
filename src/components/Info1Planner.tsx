@@ -534,8 +534,7 @@ export default function Info1Planner() {
                                     />
                                   </td>
                                 ))}
-
-                                )){"}"}
+                                {"}"}
                               </tr>
                             ) : null
                           ))}
