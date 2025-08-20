@@ -1020,35 +1020,35 @@ export default function Info1Planner() {
                             })}
                           </tr>
                         </thead>
-                        <tbody className="[&>tr:nth-child(even)]:bg-slate-50">
-                          {session.strategy.map((st, idx) =>
-                            st.weekly ? (
-                              <tr key={idx} className="border-t">
-                                <td className="px-2 py-2 align-top sticky left-0 z-10 bg-white border-r w-40">
-                                  <Badge
-                                    style={{
-                                      background: "#e6f7fd",
-                                      color: "#036086",
-                                      borderColor: PRIMARY,
-                                    }}
-                                  >
-                                    {st.subject}
-                                  </Badge>
-                                </td>
-                                {weekDates.map((_, day) => (
-                                  <td key={day} className="px-1 py-1 align-top min-w-[10rem]">
-                                    <Textarea
-                                      placeholder="やること…"
-                                      value={st.weekCells?.[day] || ""}
-                                      onChange={(e) => setWeekCell(idx, day, e.target.value)}
-                                      className="bg-white h-20 resize-y border-slate-300 focus-visible:ring-slate-400"
-                                    />
+                          <tbody className="[&>tr:nth-child(even)]:bg-slate-50">
+                            {session.strategy.map((st, idx) =>
+                              st.weekly ? (
+                                <tr key={idx} className="border-t">
+                                  <td className="px-2 py-2 align-top sticky left-0 z-10 bg-white border-r w-40">
+                                    <Badge
+                                      style={{
+                                        background: "#e6f7fd",
+                                        color: "#036086",
+                                        borderColor: PRIMARY,
+                                      }}
+                                    >
+                                      {st.subject}
+                                    </Badge>
                                   </td>
-                                ))}
-                              </tr>
-                            ) : null
-                          )}
-                        </tbody>
+                                  {weekDates.map((_, day) => (
+                                    <td key={day} className="px-1 py-1 align-top min-w-[10rem]">
+                                      <Textarea
+                                        placeholder="やること…"
+                                        value={st.weekCells?.[day] || ""}
+                                        onChange={(e) => setWeekCell(idx, day, e.target.value)}
+                                        className="bg-white h-20 resize-y border-slate-300 focus-visible:ring-slate-400"
+                                      />
+                                    </td>
+                                  ))}
+                                </tr>
+                              ) : null
+                            )}
+                          </tbody>
                       </table>
                     </div>
                   )}
