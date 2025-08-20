@@ -1078,7 +1078,7 @@ export default function Info1Planner() {
                           // 新しい順に見せたい → 描画順を逆転
                           const idx = session.weekSnapshots.length - 1 - rawIdx;
                           const item = session.weekSnapshots[idx];
-                          const start = (item as any).weekStart || (session.weeklyStart || toISO(new Date())); // 後方互換
+                          const start = item.weekStart ?? session.weeklyStart ?? toISO(new Date());
                           const end = addDays(start, 6);
 
                           return (
