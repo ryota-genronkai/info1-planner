@@ -564,18 +564,18 @@ export default function Info1Planner() {
                       <div className="border rounded-lg overflow-hidden bg-white mt-1">
                         <select
                           className="w-full p-2 bg-white"
-                          value={session.examType}
+                          value={session.examYear}
                           onChange={(e) =>
                             setSession((s) => ({
                               ...s,
-                              examType: e.target.value as ExamType,
-                              examLabel: `${s.examYear || ""} ${e.target.value}`,
+                              examYear: Number(e.target.value) as ExamYear,
+                              examLabel: `${e.target.value} ${s.examType || ""}`,
                             }))
                           }
                         >
-                          {["共通テスト 本試験", "共通テスト 追試験", "模試"].map((t) => (
-                            <option key={t} value={t}>
-                              {t}
+                          {[2025, 2024, 2023, 2022].map((y) => (
+                            <option key={y} value={y}>
+                              {y}
                             </option>
                           ))}
                         </select>
@@ -583,7 +583,7 @@ export default function Info1Planner() {
                     </div>
                     <div>
                       <label className="text-sm text-slate-700">試験種別</label>
-                      <div className="border rounded-lg overflow-hidden bg白 mt-1 bg-white">
+                      <div className="border rounded-lg overflow-hidden bg-white mt-1">
                         <select
                           className="w-full p-2 bg-white"
                           value={session.examType}
