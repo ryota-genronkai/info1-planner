@@ -87,8 +87,10 @@ type StrategyItem = {
   at: string;
   subject: Subject;
   months?: number[];
+  monthsRange?: { start: number; end: number } | null;
   weekly?: boolean;
   weekCells?: Record<number, string>;
+  mergedRanges?: Array<{ start: number; end: number }>;
 };
 
 type WeekSnapshot = { at: string; rows: Array<{ subject: string; title: string; cells: Record<number,string> }> };
@@ -98,6 +100,9 @@ type HistoryItem = {
   target: number;
   prevScore: number;
   solutions: Solution[];
+  subject: Subject;
+  label?: string;
+  examType?: ExamType;
 };
 
 type Session = {
@@ -106,14 +111,32 @@ type Session = {
   score: number;
   causes: Record<string, boolean>;
   memo: string;
-  history: HistoryItem[];   // ← ここ
+  history: HistoryItem[];
   strategy: StrategyItem[];
   weekSnapshots: WeekSnapshot[];
   weeklyAutosave?: boolean;
+  weeklySpanDays?: number;
+  timelineStart?: ISODate;
+  timelineDays?: number;
+
+  // ▼ 追加
+  examType?: ExamType;
+  examYear?: ExamYear;
+  examLabel?: string;   // 例: "2025 共通テスト 本試験"
+  strategyMonths?: number[]; // 全体戦略 共通の実施月（固定行）
+  weeklyStart?: ISODate;     // 週間ヘッダの開始日
 };
+
 
 type NodeKey = "A" | "Ov" | "Prac" | "Cet" | "Prog" | "Done";
 type Solution = { node: NodeKey; reason: string };
+
+// 追記: 試験メタ
+type ExamType = "共通テスト 本試験" | "共通テスト 追試験" | "模試";
+type ExamYear = 2025 | 2024 | 2023 | 2022;
+
+// 追記: 週間の開始日（連続日付ヘッダ用）
+type ISODate = string; // "2025-08-19" のような文字列
 
 const initialSession: Session = {
   subject: "その他",
@@ -125,6 +148,16 @@ const initialSession: Session = {
   strategy: [],
   weekSnapshots: [],
   weeklyAutosave: true,
+  weeklySpanDays: 7,
+  timelineStart: new Date().toISOString().slice(0, 10),
+  timelineDays: 365,
+
+  // ▼ 追加
+  examType: "共通テスト 本試験",
+  examYear: 2025,
+  examLabel: "2025 共通テスト 本試験",
+  strategyMonths: [],
+  weeklyStart: new Date().toISOString().slice(0,10),
 };
 
 // 月バー（1..12）: マルチトグル
@@ -182,17 +215,25 @@ export default function Info1Planner() {
     const actions: Solution[] = [];
     if (!isInfo) return actions;
     if (achieved) return [{ node: "Done", reason: "目標点数に到達。振り返り・次の目標設定へ。" }];
+
     if (isUnlearned) {
       actions.push({ node: "Ov", reason: "未修のため、まずは定義・範囲の把握" });
-      actions.push({ node: "A", reason: "基礎確認後の再挑戦（達成度チェック）" });
       return actions;
     }
+
     if (selectedCauses.length > 0) {
       for (const c of selectedCauses) actions.push({ node: c.to as NodeKey, reason: c.label });
-      actions.push({ node: "A", reason: "対策後の再挑戦（達成度チェック）" });
     }
     return actions;
   }, [isInfo, achieved, isUnlearned, selectedCauses]);
+  
+  const filteredHistory = useMemo(() => {
+    const list = session.history || [];
+    return list.filter((h) =>
+      (session.examType ? (h.label?.includes(session.examType) ?? false) : true) &&
+      (session.subject ? h.subject === session.subject : true)
+    );
+  }, [session.history, session.examType, session.subject]);
 
   // handlers
   function resetToRetry() {
@@ -203,7 +244,15 @@ export default function Info1Planner() {
       memo: "",
       history: [
         ...s.history,
-        { at: new Date().toISOString(), target: s.target, prevScore: s.score, solutions },
+        {
+          at: new Date().toISOString(),
+          target: s.target,
+          prevScore: s.score,
+          solutions,
+          subject: s.subject,
+          label: s.examLabel,
+          examType: s.examType,
+        },
       ],
     }));
     setTab("plan");
@@ -211,6 +260,13 @@ export default function Info1Planner() {
   }
 
   function addToStrategy(step: Solution) {
+    const exists = session.strategy.some(
+      (it) => it.subject === session.subject && it.node === step.node
+    );
+    if (exists) {
+      toast("同じ学習段階は既に全体戦略に入っています");
+      return;
+    }
     setSession(s => ({
       ...s,
       strategy: [
@@ -348,6 +404,43 @@ export default function Info1Planner() {
                           onChange={(e)=>setSession(s=>({...s,score:Number(e.target.value||0)}))}
                           className="w-24 bg-white" />
                       </div>
+                    </div>
+                  </div>
+                  
+                  {/* ▼ 試験メタ（年・種別・ラベル） */}
+                  <div className="grid md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="text-sm text-slate-700">年度</label>
+                      <div className="border rounded-lg overflow-hidden bg-white mt-1">
+                        <select
+                          className="w-full p-2 bg-white"
+                          value={session.examYear}
+                          onChange={(e) => setSession(s => ({ ...s, examYear: Number(e.target.value) as ExamYear, examLabel: `${e.target.value} ${s.examType || ""}` }))}
+                        >
+                          {[2025, 2024, 2023, 2022].map(y => <option key={y} value={y}>{y}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-sm text-slate-700">試験種別</label>
+                      <div className="border rounded-lg overflow-hidden bg-white mt-1">
+                        <select
+                          className="w-full p-2 bg-white"
+                          value={session.examType}
+                          onChange={(e) => setSession(s => ({ ...s, examType: e.target.value as ExamType, examLabel: `${s.examYear || ""} ${e.target.value}` }))}
+                        >
+                          {["共通テスト 本試験", "共通テスト 追試験", "模試"].map(t => <option key={t} value={t}>{t}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-sm text-slate-700">記録ラベル</label>
+                      <Input
+                        className="bg-white mt-1"
+                        value={session.examLabel || ""}
+                        onChange={(e) => setSession(s => ({ ...s, examLabel: e.target.value }))}
+                        placeholder="例) 2025 共通テスト 本試験"
+                      />
                     </div>
                   </div>
 
@@ -507,16 +600,11 @@ export default function Info1Planner() {
                   <CardTitle className="flex items-center gap-2">全体戦略</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="rounded-lg border p-3 bg-slate-50 text-slate-700 text-sm flex items-center gap-2">
-                    <CalendarDays className="w-4 h-4"/>
-                    2026年の <b>1〜12月</b> を複数選択できます（色が付いた月）。チェックで週間戦略へ送れます。
-                    <span className="ml-auto text-xs text-slate-500">凡例: <span className="inline-block w-3 h-3 bg-sky-600 align-middle mr-1"></span>選択済 / <span className="inline-block w-3 h-3 bg-slate-200 align-middle mr-1"></span>未選択</span>
-                  </div>
 
                   {session.strategy.length === 0 ? (
                     <div className="text-sm text-slate-600">まだ何も追加されていません。問題解決の「解決策」から追加してください。</div>
                   ) : (
-                    <ul className="space-y-2">
+                      <ul className="space-y-2 border border-slate-200 rounded-lg p-1">
                       {session.strategy.map((st, idx) => (
                         <li key={idx} className="flex items-start gap-3 rounded-xl border p-3 bg-white hover:shadow-sm transition-shadow">
                           <span className="text-xs rounded-full px-2 py-0.5 border bg-slate-50">{idx+1}</span>
@@ -531,12 +619,74 @@ export default function Info1Planner() {
                               )}
                             </div>
                             <div className="text-xs text-slate-700 mb-2">{st.reason}</div>
-                            {/* 12ヶ月カラー棒（簡易ビジュアル） */}
-                            <div className="flex items-center gap-2">
-                              <div className="flex-1 grid grid-cols-12 gap-0.5">
-                                {Array.from({length:12},(_,m)=>m+1).map(m=>{
-                                  const on = st.months?.includes(m);
-                                  return <div key={m} className={`h-3 rounded-sm ${on?"bg-sky-600":"bg-slate-200"}`} title={`${m}月`}/>;
+                            <div className="flex items-center gap-2 text-xs mb-1">
+                              <label className="text-slate-600">期間:</label>
+                              <select
+                                className="border rounded px-1 py-0.5 bg-white"
+                                value={st.monthsRange?.start ?? ""}
+                                onChange={(e) => {
+                                  const v = Number(e.target.value) || 1;
+                                  setSession(s => ({
+                                    ...s,
+                                    strategy: s.strategy.map((x, i) => {
+                                      if (i !== idx) return x;
+                                      const end = x.monthsRange?.end ?? v;
+                                      return { ...x, monthsRange: { start: v, end: Math.max(v, end) } };
+                                    })
+                                  }))
+                                }}
+                              >
+                                <option value="">-</option>
+                                {Array.from({ length: 12 }, (_, m) => m + 1).map(m => <option key={m} value={m}>{m}月</option>)}
+                              </select>
+                              <span>〜</span>
+                              <select
+                                className="border rounded px-1 py-0.5 bg-white"
+                                value={st.monthsRange?.end ?? ""}
+                                onChange={(e) => {
+                                  const v = Number(e.target.value) || 12;
+                                  setSession(s => ({
+                                    ...s,
+                                    strategy: s.strategy.map((x, i) => {
+                                      if (i !== idx) return x;
+                                      const start = x.monthsRange?.start ?? v;
+                                      return { ...x, monthsRange: { start: Math.min(start, v), end: v } };
+                                    })
+                                  }))
+                                }}
+                              >
+                                <option value="">-</option>
+                                {Array.from({ length: 12 }, (_, m) => m + 1).map(m => <option key={m} value={m}>{m}月</option>)}
+                              </select>
+                            </div>
+                            {/* 12ヶ月グリッド（表っぽい見た目） */}
+                            <div className="mt-2">
+                              <div className="grid grid-cols-[auto_repeat(12,1fr)] items-stretch border rounded">
+                                {/* 見出し（左端） */}
+                                <div className="px-2 py-1 text-xs bg-slate-50 border-r">
+                                  2026年
+                                </div>
+                                {/* 1〜12月ヘッダ */}
+                                {Array.from({ length: 12 }, (_, m) => m + 1).map(m => (
+                                  <div key={`h-${m}`} className="px-1 py-1 text-[11px] text-center bg-slate-50 border-l">{m}月</div>
+                                ))}
+
+                                {/* 行本体：学習段階見出し */}
+                                <div className="px-2 py-2 text-sm border-t border-r font-medium">
+                                  {NODE_META[st.node]?.title || st.node}
+                                </div>
+                                {/* 12セル：期間を帯で塗る */}
+                                {Array.from({ length: 12 }, (_, m) => m + 1).map(m => {
+                                  const on = st.monthsRange
+                                    ? m >= st.monthsRange.start && m <= st.monthsRange.end
+                                    : false; // 期間未設定なら未塗り
+                                  return (
+                                    <div
+                                      key={`m-${m}`}
+                                      className={`h-6 border-t border-l ${on ? "bg-sky-300" : "bg-white"}`}
+                                      title={`${m}月`}
+                                    />
+                                  );
                                 })}
                               </div>
                             </div>
@@ -547,7 +697,6 @@ export default function Info1Planner() {
                           </div>
                           {/* 月バー（マルチ） */}
                           <div className="flex flex-col items-end gap-2">
-                            <MultiMonthBar values={st.months} onToggle={(m)=>toggleStrategyMonth(idx, m)} />
                             <Button size="icon" variant="ghost" className="text-slate-700" onClick={()=>removeStrategy(idx)}>
                               <Trash2 className="w-4 h-4" />
                             </Button>
@@ -571,52 +720,97 @@ export default function Info1Planner() {
               <Card className="bg-white">
                 <CardHeader className="flex flex-col gap-2">
                   <CardTitle className="flex items-center gap-2">週間戦略</CardTitle>
-                  <div className="flex items-center gap-3 text-xs text-slate-600">
-                    <span className="whitespace-nowrap">注目曜日:</span>
-                    <DayBar value={activeDay} onChange={setActiveDay} />
+                  <div className="flex flex-wrap items-center gap-3 text-xs text-slate-600">
+                    <label className="flex items-center gap-2">
+                      <span>開始日:</span>
+                      <Input
+                        type="date"
+                        className="h-7 w-[160px] bg-white"
+                        value={session.timelineStart || ""}
+                        onChange={(e) => setSession(s => ({ ...s, timelineStart: e.target.value }))}
+                      />
+                    </label>
+                    <label className="flex items-center gap-2">
+                      <span>表示日数:</span>
+                      <select
+                        className="border rounded px-1 py-0.5 bg-white h-7"
+                        value={session.timelineDays || 730}
+                        onChange={(e) => setSession(s => ({ ...s, timelineDays: Number(e.target.value) }))}
+                      >
+                        {[365, 730, 1095, 1460].map(n => <option key={n} value={n}>{n}日</option>)}
+                      </select>
+                    </label>
                     <label className="inline-flex items-center gap-2 ml-auto">
                       <input
                         type="checkbox"
                         className="accent-slate-900"
                         checked={!!session.weeklyAutosave}
-                        onChange={(e)=>setSession(s=>({...s, weeklyAutosave: e.target.checked}))}
+                        onChange={(e) => setSession(s => ({ ...s, weeklyAutosave: e.target.checked }))}
                       />
                       セル入力を自動保存
                     </label>
+                    <div className="ml-2 flex items-center gap-2">
+                      <Button size="sm" variant="secondary" className="h-7"
+                        onClick={() => setSession(s => {
+                          const d = new Date(s.timelineStart || new Date().toISOString().slice(0, 10));
+                          d.setDate(d.getDate() - 7);
+                          return { ...s, timelineStart: d.toISOString().slice(0, 10) };
+                        })}
+                      >← 1週</Button>
+                      <Button size="sm" variant="secondary" className="h-7"
+                        onClick={() => setSession(s => {
+                          const d = new Date(s.timelineStart || new Date().toISOString().slice(0, 10));
+                          d.setDate(d.getDate() + 7);
+                          return { ...s, timelineStart: d.toISOString().slice(0, 10) };
+                        })}
+                      >1週 →</Button>
+                    </div>
                   </div>
                 </CardHeader>
+
                 <CardContent className="space-y-4">
-                  {session.strategy.filter(s=>s.weekly).length === 0 ? (
-                    <div className="text-sm text-slate-600">まだ週間戦略に入っている項目はありません。全体戦略でチェックしてください。</div>
+                  {session.strategy.filter(s => s.weekly).length === 0 ? (
+                    <div className="text-sm text-slate-600">
+                      まだ週間戦略に入っている項目はありません。全体戦略でチェックしてください。
+                    </div>
                   ) : (
                     <div className="overflow-x-auto rounded-lg border">
                       <table className="min-w-full text-sm">
                         <thead className="bg-slate-100 text-slate-700 sticky top-0 z-10">
                           <tr className="[&>th]:px-2 [&>th]:py-2 [&>th]:text-left">
-                            <th className="w-40">教科</th>
-                            <th className="w-64">学習段階</th>
-                            {['月','火','水','木','金','土','日'].map((d, i)=>(
-                              <th key={d} className={`w-56 ${activeDay===i ? "bg-amber-100" : ""}`}>{d}</th>
-                            ))}
+                            <th className="w-40 sticky left-0 z-20 bg-slate-100 border-r">教科</th>
+                            <th className="w-64 sticky left-40 z-20 bg-slate-100 border-r">学習段階</th>
+                            {Array.from({ length: session.timelineDays || 730 }, (_, i) => {
+                              const baseStr = session.timelineStart || new Date().toISOString().slice(0, 10);
+                              const base = new Date(baseStr);
+                              const d = new Date(base); d.setDate(base.getDate() + i);
+                              const label = `${(d.getMonth() + 1).toString().padStart(2, "0")}/${d.getDate().toString().padStart(2, "0")}`;
+                              const youbi = ["日", "月", "火", "水", "木", "金", "土"][d.getDay()];
+                              return (
+                                <th key={i} className="w-48 text-center">
+                                  <div className="font-medium">{label}</div>
+                                  <div className="text-[11px] text-slate-500">{youbi}</div>
+                                </th>
+                              );
+                            })}
                           </tr>
                         </thead>
                         <tbody className="[&>tr:nth-child(even)]:bg-slate-50">
-                          {session.strategy.map((st, idx)=> (
+                          {session.strategy.map((st, idx) => (
                             st.weekly ? (
                               <tr key={idx} className="border-t">
-                                <td className="px-2 py-2 align-top"><Badge className="bg-sky-100 text-sky-800 border-sky-200">{st.subject}</Badge></td>
-                                <td className="px-2 py-2 align-top font-medium">{NODE_META[st.node]?.title || st.node}</td>
-                                {Array.from({length:7},(_,i)=>i).map(day => (
-                                  <td key={day} className={`px-1 py-1 align-top ${activeDay===day ? "bg-amber-50" : ""}`}>
+                                <td className="px-2 py-2 align-top sticky left-0 z-10 bg-white border-r">
+                                  <Badge className="bg-sky-100 text-sky-800 border-sky-200">{st.subject}</Badge>
+                                </td>
+                                <td className="px-2 py-2 align-top font-medium sticky left-40 z-10 bg-white border-r">
+                                  {NODE_META[st.node]?.title || st.node}
+                                </td>
+                                {Array.from({ length: session.timelineDays || 730 }, (_, i) => i).map(day => (
+                                  <td key={day} className="px-1 py-1 align-top">
                                     <Textarea
                                       placeholder="やること…"
                                       value={st.weekCells?.[day] || ""}
-                                      onChange={(e)=>{
-                                        setWeekCell(idx, day, e.target.value);
-                                        if (session.weeklyAutosave) {
-                                          // 触るだけで保存：useLocalStorageで即時永続化
-                                        }
-                                      }}
+                                      onChange={(e) => setWeekCell(idx, day, e.target.value)}
                                       className="bg-white h-20 resize-y border-slate-300 focus-visible:ring-slate-400"
                                     />
                                   </td>
@@ -633,55 +827,51 @@ export default function Info1Planner() {
                     <Button onClick={saveWeekSnapshot} className="bg-slate-900 text-white">この週を保存</Button>
                   </div>
 
-                  {/* 週間スナップショット履歴 */}
+                  {/* 週間スナップショット履歴（そのままでOKなら既存を残す） */}
                   {session.weekSnapshots?.length > 0 && (
                     <div className="space-y-2">
                       <div className="text-sm text-slate-700 font-semibold">保存済みの週</div>
-                      <ul className="space-y-2">
-                        {session.weekSnapshots.map((wk, i)=> (
-                          <li key={i} className="rounded-lg border p-3 bg-white">
-                            <div className="text-xs text-slate-500 mb-2">{new Date(wk.at).toLocaleString()}</div>
-                            <div className="overflow-x-auto">
-                              <table className="min-w-full text-xs border">
-                                <thead className="bg-slate-100">
-                                  <tr className="[&>th]:px-2 [&>th]:py-1 [&>th]:text-left">
-                                    <th className="w-32">教科</th>
-                                    <th className="w-48">学習段階</th>
-                                    {['月','火','水','木','金','土','日'].map((d)=>(<th key={d} className="w-40">{d}</th>))}
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {wk.rows.map((r, j)=> (
-                                    <tr key={j} className="border-t">
-                                      <td className="px-2 py-1 align-top">{r.subject}</td>
-                                      <td className="px-2 py-1 align-top">{r.title}</td>
-                                      {Array.from({length:7},(_,k)=>k).map(day => (
-                                        <td key={day} className="px-2 py-1 align-top whitespace-pre-wrap">{r.cells?.[day] || ""}</td>
-                                      ))}
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </div>
-                          </li>
-                        ))}
-                      </ul>
+                      {/* …ここは今のままでOK… */}
                     </div>
                   )}
                 </CardContent>
               </Card>
             </TabsContent>
 
+
             {/* 履歴（達成サイクル） */}
             <TabsContent value="history" className="mt-6">
               <Card className="bg-white">
                 <CardHeader>
+                  <div className="flex flex-wrap gap-3 p-3 pt-0 text-xs text-slate-600">
+                    <div className="border rounded-lg overflow-hidden bg-white">
+                      <select
+                        className="p-2 bg-white"
+                        value={session.examType || ""}
+                        onChange={(e) => setSession(s => ({ ...s, examType: e.target.value as ExamType }))}
+                      >
+                        <option value="">（種別を選択）</option>
+                        {["共通テスト 本試験", "共通テスト 追試験", "模試"].map(t =>
+                          <option key={t} value={t}>{t}</option>
+                        )}
+                      </select>
+                    </div>
+                    <div className="border rounded-lg overflow-hidden bg-white">
+                      <select
+                        className="p-2 bg-white"
+                        value={session.subject}
+                        onChange={(e) => setSession(s => ({ ...s, subject: e.target.value as Subject }))}
+                      >
+                        {SUBJECTS.map(sub => <option key={sub} value={sub}>{sub}</option>)}
+                      </select>
+                    </div>
+                  </div>
                   <CardTitle>学習サイクル履歴</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-3">
+                <CardContent className="space-y-3">                  
                   {session.history?.length ? (
                     <ul className="space-y-3">
-                      {session.history.map((h, idx) => (
+                      {filteredHistory.map((h, idx) => (
                         <li key={idx} className="rounded-xl border p-3 bg-white">
                           <div className="text-sm flex items-center gap-2">
                             <Badge className="bg-slate-100 text-slate-900 border-slate-200">{new Date(h.at).toLocaleString()}</Badge>
