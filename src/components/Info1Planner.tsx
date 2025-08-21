@@ -181,6 +181,18 @@ const CAUSE_MAP = [
   },
 ] as const;
 
+const CAUSE_MAP_ENGLISH = [
+  { key: "unlearned", label: "未修（単語/文法など）", to: "Ov", icon: BookOpen, hint: "基礎→標準の順に底上げ" },
+  { key: "reading", label: "長文読解の不足", to: "Prac", icon: Notebook, hint: "段階別：標準→応用→発展" },
+  { key: "grammar", label: "文法・語法が弱い", to: "Prac", icon: Notebook, hint: "標準文法→応用文法+語法→総合英文法" },
+  { key: "vocab", label: "単語・熟語が弱い", to: "Prac", icon: Notebook, hint: "基礎単語→標準単語→応用単語→発展単語" },
+  { key: "listening", label: "リスニングが弱い", to: "Prac", icon: Notebook, hint: "発音→標準(L)過去問→共通テスト(L)対策" },
+  { key: "writing", label: "英作文が弱い", to: "Prac", icon: Notebook, hint: "例文暗記→標準作文→応用作文→発展作文" },
+  { key: "conversation", label: "会話問題が苦手", to: "Prac", icon: Notebook, hint: "会話問題対策で取りこぼし防止" },
+  { key: "format", label: "形式/時間配分に不慣れ", to: "Cet", icon: Workflow, hint: "共通テスト(R)対策/標準私立対策" },
+  { key: "school", label: "志望校別対策が必要", to: "A", icon: Target, hint: "志望校の過去問→該当大対策（早稲田/慶應/〜大）" },
+] as const;
+
 const NODE_META: Record<
   string,
   { title: string; icon: LucideIcon; color: string; img?: string }
@@ -414,6 +426,11 @@ type Session = {
   examType?: ExamType;
   examYear?: ExamYear;
   examLabel?: string;
+  goalPurpose?: {
+    goalNote?: string;     // 例: "応用過去問で8割"
+    purposeNote?: string;  // 例: "MARCH合格のための足場作り"
+  };
+  targetTier?: "標準" | "応用" | "発展" | null;
 };
 
 const initialSession: Session = {
@@ -431,7 +448,11 @@ const initialSession: Session = {
   examType: "共通テスト 本試験",
   examYear: 2025,
   examLabel: "2025 共通テスト 本試験",
+  goalPurpose: { goalNote: "", purposeNote: "" },
+  targetTier: null,
 };
+
+
 
 export default function Info1Planner() {
   const [session, setSession] = useLocalStorage<Session>(
@@ -444,9 +465,11 @@ export default function Info1Planner() {
   const isInfo = session.subject === "情報I";
   const isUnlearned = !!session.causes["unlearned"];
 
+  const ACTIVE_CAUSE_MAP = session.subject === "英語" ? CAUSE_MAP_ENGLISH : CAUSE_MAP;
+
   const selectedCauses = useMemo(
-    () => CAUSE_MAP.filter((c) => session.causes[c.key]),
-    [session.causes]
+    () => ACTIVE_CAUSE_MAP.filter((c) => session.causes[c.key]),
+    [session.causes, session.subject]
   );
 
   function detectEnglishTargetTier(label: string | undefined): "標準" | "応用" | "発展" | null {
