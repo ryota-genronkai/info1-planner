@@ -44,30 +44,54 @@ const addDays = (dateStr: string, n: number) => {
 
 // 型
 type Subject =
-  | "情報I"
-  | "数学IA"
   | "英語"
-  | "国語"
-  | "化学基礎"
+  | "数学IA"
+  | "数学IAIIBC"
+  | "数学IAIIBCIII"
+  | "現代文"
+  | "古文"
+  | "漢文"
+  | "小論文"
   | "物理基礎"
+  | "化学基礎"
   | "生物基礎"
-  | "地理"
-  | "日本史"
-  | "世界史"
+  | "地学基礎"
+  | "物理・物理基礎"
+  | "化学・化学基礎"
+  | "生物・生物基礎"
+  | "地学・地学基礎"
+  | "日本史探究・歴史総合"
+  | "世界史探究・歴史総合"
+  | "地理総合・地理探究"
+  | "公共・政治経済"
+  | "公共・倫理"
+  | "情報I"
   | "その他";
 
 const SUBJECTS: Subject[] = [
-  "その他",
-  "情報I",
-  "数学IA",
   "英語",
-  "国語",
-  "化学基礎",
+  "数学IA",
+  "数学IAIIBC",
+  "数学IAIIBCIII",
+  "現代文",
+  "古文",
+  "漢文",
+  "小論文",
   "物理基礎",
+  "化学基礎",
   "生物基礎",
-  "地理",
-  "日本史",
-  "世界史",
+  "地学基礎",
+  "物理・物理基礎",
+  "化学・化学基礎",
+  "生物・生物基礎",
+  "地学・地学基礎",
+  "日本史探究・歴史総合",
+  "世界史探究・歴史総合",
+  "地理総合・地理探究",
+  "公共・政治経済",
+  "公共・倫理",
+  "情報I",
+  "その他"
 ];
 
 type LinkMap = Record<
@@ -99,6 +123,32 @@ const LINKS: LinkMap = {
     img: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSwZuIas28PUqgYzs5HFn-LWKTQ3IwCUm6fmQ&s",
   },
 };
+
+const UNIVERSITY_LEVELS: Record<"標準" | "応用" | "発展", string[]> = {
+  標準: ["共通テスト", "日東駒専", "日大", "東洋", "駒澤", "専修"],
+  応用: [
+    "MARCH", "明治", "青山", "立教", "中央", "法政",
+    "関関同立", "関西", "関西学院", "同志社", "立命館",
+    "地方国立", "地方国公立",
+  ],
+  発展: [
+    "早稲田", "慶應", "早慶",
+    "東大", "京大", "阪大", "名大", "東北大", "九大", "北大",
+    "東京大学", "京都大学", "大阪大学", "名古屋大学", "東北大学",
+    "九州大学", "北海道大学", "一橋", "東京工業", "東工", "神戸大学",
+    "難関国公立", "最難関国公立",
+  ],
+};
+
+function getExamTierFromLabel(label?: string): "標準" | "応用" | "発展" | null {
+  if (!label) return null;
+  for (const tier of ["発展", "応用", "標準"] as const) {
+    if (UNIVERSITY_LEVELS[tier].some((k) => label.includes(k))) return tier;
+  }
+  // 共通テスト系は無条件で標準扱い
+  if (label.includes("共通テスト")) return "標準";
+  return null;
+}
 
 const CAUSE_MAP = [
   {
@@ -162,6 +212,137 @@ const NODE_META: Record<
   },
   Done: { title: "目標達成", icon: Trophy, color: "border-yellow-500" },
 };
+
+function buildPastFallbackReason(target: "標準" | "応用" | "発展"): string {
+  if (target === "発展") return "発展過去問で検証→厳しければ 応用→標準 に遡る";
+  if (target === "応用") return "応用過去問で検証→厳しければ 標準 に遡る";
+  return "標準過去問で検証（安定後に上位へ進む）";
+}
+
+type Tier = "基礎" | "標準" | "応用" | "発展";
+
+// 英語ステージの簡易マップ（提案に使う“代表セット”）
+const EN_TIERS: Record<Tier, string[]> = {
+  基礎: [
+    "基礎単語", "基礎文法", "基礎解釈",
+  ],
+  標準: [
+    "標準単語", "標準文法", "熟語", "標準解釈", "標準長文",
+    "標準(R)過去問", "共通テスト(R)対策", "標準私立対策",
+    "発音", "標準(L)過去問", "共通テスト(L)対策", "基礎リスニング対策",
+    "会話問題対策",
+  ],
+  応用: [
+    "例文暗記", "応用単語", "応用長文", "標準作文",
+    "応用過去問", "難関私立対策", "地方国公立対策",
+    "応用文法+語法対策", "総合英文法対策", "応用解釈対策",
+    "理系テーマ対策", "最新テーマ対策", "応用作文",
+  ],
+  発展: [
+    "発展長文", "発展過去問", "発展単語対策", "発展文法+語法対策",
+    "発展解釈対策", "発展リスニング対策", "発展作文対策",
+    "要約対策",
+    // 大学別
+    "早稲田対策", "慶應対策", "難関国公立対策",
+    "北大対策", "東北大対策", "名大対策", "阪大対策",
+    "九大対策", "京大対策", "東大対策",
+  ],
+};
+
+// examLabel などの文字列から想定 tier を推定
+function examLabelToTier(label?: string | null): Tier {
+  const s = (label || "").toLowerCase();
+
+  // 発展（早慶・難関国立）
+  const advKeys = [
+    "早稲田", "慶應", "東大", "京大", "阪大", "名大", "北大", "東北大", "九大",
+    "最難関", "難関国公立"
+  ];
+  if (advKeys.some(k => s.includes(k.toLowerCase()))) return "発展";
+
+  // 応用（MARCH・関関同立・地方国立）
+  const applKeys = ["march", "関関同立", "地方国立", "地方国公立"];
+  if (applKeys.some(k => s.includes(k.toLowerCase()))) return "応用";
+
+  // 標準（共通テスト・日東駒専）
+  const stdKeys = ["共通テスト", "日東駒専"];
+  if (stdKeys.some(k => s.includes(k.toLowerCase()))) return "標準";
+
+  // 何もなければ標準に寄せる
+  return "標準";
+}
+
+// 指定 tier から“遡り順”を作る（発展→応用→標準）
+function fallbackChainFromTier(start: Tier): Tier[] {
+  const order: Tier[] = ["発展", "応用", "標準"];
+  const i = order.indexOf(start);
+  return i >= 0 ? order.slice(i) : order;
+}
+
+// 英語の “次にやる候補” を短く作る（UI は reason 文で提示）
+function englishNextShortlist(tier: Tier, count = 3): string[] {
+  const arr = EN_TIERS[tier] || [];
+  return arr.slice(0, count);
+}
+
+// 英語用 solutions を作成（既存 Solution 型 {node, reason} に合わせる）
+function buildEnglishSolutions(session: Session): Solution[] {
+  const actions: Solution[] = [];
+
+  // 目標到達なら Done
+  if (session.score >= session.target) {
+    return [{ node: "Done", reason: "目標点に到達。振り返り・次の目標設定へ。" }];
+  }
+
+  const tier = examLabelToTier(session.examLabel);
+  const chain = fallbackChainFromTier(tier);
+
+  // 未修 → まず基礎セット
+  if (session.causes?.["unlearned"]) {
+    const picks = englishNextShortlist("基礎", 3).join(" / ");
+    actions.push({
+      node: "Ov",
+      reason: `未修があるため、まずは基礎の定義整理と最低限セット：${picks}`,
+    });
+  }
+
+  // “過去問で検証 → ダメなら遡る” を 1つの A ノードに集約して提示
+  {
+    const msg = chain
+      .map((t, idx) => {
+        const head =
+          t === "発展" ? "発展過去問" :
+            t === "応用" ? "応用過去問" : "標準過去問";
+        const pick = englishNextShortlist(t, 2).join(" / ");
+        return `${idx === 0 ? "まず" : "→ 次に"}「${head}」で検証（推奨：${pick}）`;
+      })
+      .join(" ");
+
+    actions.push({
+      node: "A",
+      reason: `${session.examLabel || "目標レベル"} を想定。${msg}。`,
+    });
+  }
+
+  // 演習不足 → 問題演習（tier に応じて代表セット名を混ぜる）
+  if (session.causes?.["practice"]) {
+    const pick = englishNextShortlist(tier, 3).join(" / ");
+    actions.push({
+      node: "Prac",
+      reason: `演習不足：まずは ${tier} 帯の演習を増やす（例：${pick}）。`,
+    });
+  }
+
+  // 形式不慣れ → 共通テスト対策（R/L）
+  if (session.causes?.["format"]) {
+    actions.push({
+      node: "Cet",
+      reason: "形式不慣れ：共通テスト(R/L)の時間配分・設問形式に最適化。",
+    });
+  }
+
+  return actions;
+}
 
 function useLocalStorage<T>(key: string, initial: T) {
   const isBrowser = typeof window !== "undefined";
@@ -270,24 +451,55 @@ export default function Info1Planner() {
 
   const solutions: Solution[] = useMemo(() => {
     const actions: Solution[] = [];
-    if (!isInfo) return actions;
-    if (achieved)
-      return [
-        {
-          node: "Done",
-          reason: "目標点数に到達。振り返り・次の目標設定へ。",
-        },
-      ];
-    if (isUnlearned) {
-      actions.push({ node: "Ov", reason: "未修のため、まずは定義・範囲の把握" });
+
+    // === 英語専用ロジック ===
+    if (session.subject === "英語") {
+      return buildEnglishSolutions(session); // ← 英語専用ヘルパー関数
+    }
+
+    // === 情報I 専用ロジック ===
+    if (session.subject === "情報I") {
+      if (achieved) {
+        return [
+          {
+            node: "Done",
+            reason: "目標点数に到達。振り返り・次の目標設定へ。",
+          },
+        ];
+      }
+      if (isUnlearned) {
+        actions.push({
+          node: "Ov",
+          reason: "未修のため、まずは定義・範囲の把握",
+        });
+        return actions;
+      }
+      if (selectedCauses.length > 0) {
+        for (const c of selectedCauses) {
+          actions.push({ node: c.to as NodeKey, reason: c.label });
+        }
+      }
       return actions;
     }
-    if (selectedCauses.length > 0) {
-      for (const c of selectedCauses)
-        actions.push({ node: c.to as NodeKey, reason: c.label });
+
+    // === その他教科の汎用ロジック ===
+    if (session.score >= session.target) {
+      return [{ node: "Done", reason: "目標点数に到達。次の目標設定へ。" }];
+    }
+    if (session.causes?.["unlearned"]) {
+      actions.push({ node: "Ov", reason: "未修のため、まずは概要把握" });
+    }
+    if (session.causes?.["practice"]) {
+      actions.push({ node: "Prac", reason: "演習量の確保" });
+    }
+    if (session.causes?.["format"]) {
+      actions.push({
+        node: "Cet",
+        reason: "形式不慣れ：時間配分/形式最適化",
+      });
     }
     return actions;
-  }, [isInfo, achieved, isUnlearned, selectedCauses]);
+  }, [session, achieved, isUnlearned, selectedCauses]);
 
   const filteredHistory = useMemo(() => {
     const list = session.history || [];
