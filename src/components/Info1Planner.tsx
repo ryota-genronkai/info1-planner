@@ -449,6 +449,119 @@ export default function Info1Planner() {
     [session.causes]
   );
 
+  function detectEnglishTargetTier(label: string | undefined): "標準" | "応用" | "発展" | null {
+    const L = label ?? "";
+    // 発展：早慶・難関国立
+    if (/(早稲田|慶應|東大|京大|阪大|名大|北大|東北大|九大|最難関|難関国公立)/.test(L)) return "発展";
+    // 応用：MARCH/関関同立・地方国公立
+    if (/(MARCH|関関同立|地方国公立|難関私立)/.test(L)) return "応用";
+    // 標準：共通テスト・日東駒専・中堅私大
+    if (/(共通テスト|日東駒専|中堅私立)/.test(L)) return "標準";
+    return null;
+  }
+
+  // === 英語：原因分析→解決アクション組み立て ===
+  function buildEnglishSolutions(session: Session): Solution[] {
+    const actions: Solution[] = [];
+    const label = session.examLabel || "";
+    const tier = detectEnglishTargetTier(label);
+
+    // 1) 目標到達
+    if (session.score >= session.target) {
+      return [{ node: "Done", reason: "目標点数に到達。振り返り・次の目標設定へ。" }];
+    }
+
+    // 2) 未修（基礎穴埋め）
+    if (session.causes?.["unlearned"]) {
+      actions.push({
+        node: "Ov",
+        reason:
+          "未修：基礎→標準の順に底上げ。推奨: 基礎単語→基礎文法→基礎解釈→標準単語→標準文法→熟語→標準解釈→標準長文",
+      });
+    }
+
+    // 3) 練習量不足（レベル別ラダー）
+    if (session.causes?.["practice"]) {
+      // リーディング寄り
+      if (tier === "発展") {
+        actions.push({
+          node: "Prac",
+          reason:
+            "演習不足（発展）：発展長文→発展過去問（早慶/難関国公立）。厳しければ 応用長文→応用過去問（難関私立/地方国公立）→標準長文→標準(R)過去問 の順に遡る",
+        });
+      } else if (tier === "応用") {
+        actions.push({
+          node: "Prac",
+          reason:
+            "演習不足（応用）：応用長文→応用過去問。厳しければ 標準長文→標準(R)過去問 に遡る",
+        });
+      } else {
+        actions.push({
+          node: "Prac",
+          reason:
+            "演習不足（標準）：標準長文→標準(R)過去問（共通テスト/中堅私大）。安定後に 応用長文→応用過去問 へ進む",
+        });
+      }
+
+      // 作文/文法・語法の強化も補助ラインで提示
+      actions.push({
+        node: "Prac",
+        reason:
+          "表現力補強：例文暗記→標準作文→（必要に応じて）応用作文。文法が不安なら 応用文法+語法対策→総合英文法対策 で底上げ",
+      });
+    }
+
+    // 4) 形式不慣れ（マーク・時間配分）
+    if (session.causes?.["format"]) {
+      actions.push({
+        node: "Cet",
+        reason:
+          "形式最適化：標準(R)過去問で時間配分→共通テスト(R)対策/標準私立対策。会話問題対策も並行して得点の取りこぼしを防ぐ",
+      });
+    }
+
+    // 5) リスニング絡み（examLabelやメモにヒントがある場合）
+    const looksListening = /(L\)|リスニング|Listening)/i.test(label);
+    if (looksListening) {
+      // リスニング系ラダーを追加（重複してもOK：UIでは複数カード表示想定）
+      actions.push({
+        node: "Prac",
+        reason:
+          "リスニング演習：発音→標準(L)過去問→共通テスト(L)対策。足りなければ基礎リスニング対策で音素/チャンクを固める",
+      });
+    } else {
+      // リスニング苦手をメモ等で示す場合の汎用補助
+      if (session.memo?.includes("リスニング") || session.memo?.includes("聴")) {
+        actions.push({
+          node: "Prac",
+          reason:
+            "リスニング補助：発音→標準(L)過去問→共通テスト(L)対策。音声速度と設問先読みの型を固める",
+        });
+      }
+    }
+
+    // 6) 過去問の開始レベル（常に最後に1枚だけ出す）
+    //   「A」ノードは“今の志望レンジでまず過去問に触れる→無理なら応用→標準に降りる”という意思表示カード
+    if (tier === "発展") {
+      actions.push({
+        node: "A",
+        reason: "過去問入口：発展過去問（早慶/難関国公立）→無理なら 応用→標準 にフォールバック",
+      });
+    } else if (tier === "応用") {
+      actions.push({
+        node: "A",
+        reason: "過去問入口：応用過去問（難関私立/地方国公立）→無理なら 標準 にフォールバック",
+      });
+    } else {
+      actions.push({
+        node: "A",
+        reason: "過去問入口：標準(R)過去問（共通テスト/中堅私大）。安定後に 応用→発展 へ進む",
+      });
+    }
+
+    return actions;
+  }
+
   const solutions: Solution[] = useMemo(() => {
     const actions: Solution[] = [];
 
