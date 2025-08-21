@@ -563,56 +563,25 @@ export default function Info1Planner() {
   }
 
   const solutions: Solution[] = useMemo(() => {
-    const actions: Solution[] = [];
-
-    // === 英語専用ロジック ===
-    if (session.subject === "英語") {
-      return buildEnglishSolutions(session); // ← 英語専用ヘルパー関数
-    }
-
-    // === 情報I 専用ロジック ===
-    if (session.subject === "情報I") {
-      if (achieved) {
-        return [
-          {
-            node: "Done",
-            reason: "目標点数に到達。振り返り・次の目標設定へ。",
-          },
-        ];
-      }
-      if (isUnlearned) {
-        actions.push({
-          node: "Ov",
-          reason: "未修のため、まずは定義・範囲の把握",
-        });
-        return actions;
-      }
+    // 情報Iの既存ロジックは温存
+    if (isInfo) {
+      const actions: Solution[] = [];
+      if (achieved) return [{ node: "Done", reason: "目標点数に到達。振り返り・次の目標設定へ。" }];
+      if (isUnlearned) return [{ node: "Ov", reason: "未修のため、まずは定義・範囲の把握" }];
       if (selectedCauses.length > 0) {
-        for (const c of selectedCauses) {
-          actions.push({ node: c.to as NodeKey, reason: c.label });
-        }
+        for (const c of selectedCauses) actions.push({ node: c.to as NodeKey, reason: c.label });
       }
       return actions;
     }
 
-    // === その他教科の汎用ロジック ===
-    if (session.score >= session.target) {
-      return [{ node: "Done", reason: "目標点数に到達。次の目標設定へ。" }];
+    // 英語の原因分析（レベルに応じて標準→応用→発展へ/からの遡り）
+    if (session.subject === "英語") {
+      return buildEnglishSolutions(session);
     }
-    if (session.causes?.["unlearned"]) {
-      actions.push({ node: "Ov", reason: "未修のため、まずは概要把握" });
-    }
-    if (session.causes?.["practice"]) {
-      actions.push({ node: "Prac", reason: "演習量の確保" });
-    }
-    if (session.causes?.["format"]) {
-      actions.push({
-        node: "Cet",
-        reason: "形式不慣れ：時間配分/形式最適化",
-      });
-    }
-    return actions;
-  }, [session, achieved, isUnlearned, selectedCauses]);
+
+    // 他科目は今は未実装
+    return [];
+  }, [session, isInfo, achieved, isUnlearned, selectedCauses]);
 
   const filteredHistory = useMemo(() => {
     const list = session.history || [];
