@@ -53,15 +53,15 @@ type Subject =
   | "化学基礎"
   | "生物基礎"
   | "地学基礎"
-  | "物理・物理基礎"
-  | "化学・化学基礎"
-  | "生物・生物基礎"
-  | "地学・地学基礎"
-  | "日本史探究・歴史総合"
-  | "世界史探究・歴史総合"
-  | "地理総合・地理探究"
-  | "公共・政治経済"
-  | "公共・倫理"
+  | "物理_物理基礎"
+  | "化学_化学基礎"
+  | "生物_生物基礎"
+  | "地学_地学基礎"
+  | "日本史探究_歴史総合"
+  | "世界史探究_歴史総合"
+  | "地理総合_地理探究"
+  | "公共_政治経済"
+  | "公共_倫理"
   | "情報I"
   | "その他";
 
@@ -78,15 +78,15 @@ const SUBJECTS: Subject[] = [
   "化学基礎",
   "生物基礎",
   "地学基礎",
-  "物理・物理基礎",
-  "化学・化学基礎",
-  "生物・生物基礎",
-  "地学・地学基礎",
-  "日本史探究・歴史総合",
-  "世界史探究・歴史総合",
-  "地理総合・地理探究",
-  "公共・政治経済",
-  "公共・倫理",
+  "物理_物理基礎",
+  "化学_化学基礎",
+  "生物_生物基礎",
+  "地学_地学基礎",
+  "日本史探究_歴史総合",
+  "世界史探究_歴史総合",
+  "地理総合_地理探究",
+  "公共_政治経済",
+  "公共_倫理",
   "情報I",
   "その他",
 ];
@@ -179,17 +179,17 @@ function getExamTierFromLabel(label?: string): "標準" | "応用" | "発展" | 
 // ---------- 原因マップ（科目別） ----------
 // 汎用
 const CAUSE_COMMON = [
-  { key: "unlearned", label: "未修/定義あいまい", to: "Ov", icon: BookOpen, hint: "まだ学んでいない範囲・定義整理から" },
+  { key: "unlearned", label: "未修/定義あいまい", to: "Ov", icon: BookOpen, hint: "まだ学んでいない範囲_定義整理から" },
   { key: "practice", label: "演習不足", to: "Prac", icon: Notebook, hint: "典型問題〜実戦演習の量が不足" },
-  { key: "format", label: "形式・時間配分に不慣れ", to: "Cet", icon: Workflow, hint: "マーク/設問形式・時間最適化" },
+  { key: "format", label: "形式_時間配分に不慣れ", to: "Cet", icon: Workflow, hint: "マーク/設問形式_時間最適化" },
 ] as const;
 
 // 英語（詳細）
 const CAUSE_EN = [
   { key: "unlearned", label: "未修（単語/文法など）", to: "Ov", icon: BookOpen, hint: "基礎→標準の順に底上げ" },
   { key: "reading", label: "長文読解不足", to: "Prac", icon: Notebook, hint: "標準→応用→発展へ段階練習" },
-  { key: "grammar", label: "文法・語法が弱い", to: "Prac", icon: Notebook, hint: "標準文法→応用文法+語法→総合英文法" },
-  { key: "vocab", label: "単語・熟語が弱い", to: "Prac", icon: Notebook, hint: "基礎→標準→応用→発展" },
+  { key: "grammar", label: "文法_語法が弱い", to: "Prac", icon: Notebook, hint: "標準文法→応用文法+語法→総合英文法" },
+  { key: "vocab", label: "単語_熟語が弱い", to: "Prac", icon: Notebook, hint: "基礎→標準→応用→発展" },
   { key: "listening", label: "リスニングが弱い", to: "Prac", icon: Notebook, hint: "発音→標準(L)過去問→共通(L)対策" },
   { key: "writing", label: "英作文が弱い", to: "Prac", icon: Notebook, hint: "例文暗記→標準作文→応用作文" },
   { key: "conversation", label: "会話問題が苦手", to: "Prac", icon: Notebook, hint: "会話問題の定型練習" },
@@ -200,18 +200,18 @@ const CAUSE_EN = [
 // 数学（代表）
 const CAUSE_MATH = [
   ...CAUSE_COMMON,
-  { key: "calc", label: "計算ミスが多い", to: "Prac", icon: Notebook, hint: "計算演習・途中式の型化" },
+  { key: "calc", label: "計算ミスが多い", to: "Prac", icon: Notebook, hint: "計算演習_途中式の型化" },
   { key: "method", label: "典型手法の未習熟", to: "Prac", icon: Notebook, hint: "例題→類題ドリル→入試演習" },
 ] as const;
 
 // 国語（代表）
 const CAUSE_JA = [
   ...CAUSE_COMMON,
-  { key: "vocab", label: "語彙/評論用語不足", to: "Ov", icon: BookOpen, hint: "語彙・用語の基礎固め" },
+  { key: "vocab", label: "語彙/評論用語不足", to: "Ov", icon: BookOpen, hint: "語彙_用語の基礎固め" },
   { key: "logic", label: "要旨把握が曖昧", to: "Prac", icon: Notebook, hint: "段落要約→設問根拠トレーニング" },
 ] as const;
 
-// 理科・社会（代表）
+// 理科_社会（代表）
 const CAUSE_SCI = [
   ...CAUSE_COMMON,
   { key: "formula", label: "公式/定義の未整理", to: "Ov", icon: BookOpen, hint: "定義→例題→練習の順で" },
@@ -231,15 +231,15 @@ const CAUSES_BY_SUBJECT: Partial<Record<Subject, readonly any[]>> = {
   化学基礎: CAUSE_SCI,
   生物基礎: CAUSE_SCI,
   地学基礎: CAUSE_SCI,
-  物理・物理基礎: CAUSE_SCI,
-  化学・化学基礎: CAUSE_SCI,
-  生物・生物基礎: CAUSE_SCI,
-  地学・地学基礎: CAUSE_SCI,
-  日本史探究・歴史総合: CAUSE_SCI,
-  世界史探究・歴史総合: CAUSE_SCI,
-  地理総合・地理探究: CAUSE_SCI,
-  公共・政治経済: CAUSE_SCI,
-  公共・倫理: CAUSE_SCI,
+  物理_物理基礎: CAUSE_SCI,
+  化学_化学基礎: CAUSE_SCI,
+  生物_生物基礎: CAUSE_SCI,
+  地学_地学基礎: CAUSE_SCI,
+  日本史探究_歴史総合: CAUSE_SCI,
+  世界史探究_歴史総合: CAUSE_SCI,
+  地理総合_地理探究: CAUSE_SCI,
+  公共_政治経済: CAUSE_SCI,
+  公共_倫理: CAUSE_SCI,
   情報I: CAUSE_COMMON,
   その他: CAUSE_COMMON,
 };
@@ -390,7 +390,7 @@ type HistoryItem = {
 };
 
 type Session = {
-  // 目的・目標
+  // 目的_目標
   purposeNote: string;
   goals: Goal[];
 
@@ -409,7 +409,7 @@ type Session = {
   causes: Record<string, boolean>;
   memo: string;
 
-  // 戦略・週
+  // 戦略_週
   strategy: StrategyItem[];
   weekSnapshots: WeekSnapshot[];
   weeklyStart?: ISODate; // 週の開始（デフォは studyStart）
@@ -455,7 +455,7 @@ function buildEnglishSolutions(session: Session): Solution[] {
 
   // 形式
   if (session.causes?.["format"]) {
-    actions.push({ node: "Cet", reason: "形式最適化：共通(R/L)で時間配分・設問形式の馴化。" });
+    actions.push({ node: "Cet", reason: "形式最適化：共通(R/L)で時間配分_設問形式の馴化。" });
   }
 
   // 過去問入口（常に提示）
@@ -479,12 +479,12 @@ function buildGenericSolutions(session: Session): Solution[] {
   const causes = session.causes || {};
   if (causes["unlearned"]) out.push({ node: "Ov", reason: "未修/定義あいまい：教科書レベルの定義→例題で土台固め。" });
   if (causes["practice"]) out.push({ node: "Prac", reason: "演習不足：典型問題→入試形式の段階演習で手数を増やす。" });
-  if (causes["format"]) out.push({ node: "Cet", reason: "形式・時間配分：共通テスト/模試形式で最適化。" });
+  if (causes["format"]) out.push({ node: "Cet", reason: "形式_時間配分：共通テスト/模試形式で最適化。" });
   if (causes["calc"]) out.push({ node: "Prac", reason: "計算精度：途中式テンプレ/計算ルーチンの反復。" });
   if (causes["method"]) out.push({ node: "Prac", reason: "典型解法：例題→類題ドリルでパターン化。" });
-  if (causes["vocab"]) out.push({ node: "Ov", reason: "語彙・用語：頻出語彙と用語の整理。" });
+  if (causes["vocab"]) out.push({ node: "Ov", reason: "語彙_用語：頻出語彙と用語の整理。" });
   if (causes["logic"]) out.push({ node: "Prac", reason: "要旨把握：段落要約→設問根拠トレーニング。" });
-  if (causes["formula"]) out.push({ node: "Ov", reason: "公式・定義：体系整理→例題適用。" });
+  if (causes["formula"]) out.push({ node: "Ov", reason: "公式_定義：体系整理→例題適用。" });
   if (causes["experiment"]) out.push({ node: "Prac", reason: "実験考察：出題パターン別の演習。" });
 
   // いつでも最後に過去問入口
@@ -499,7 +499,7 @@ export default function PlannerUI() {
   const [session, setSession] = useLocalStorage<Session>("study_planner_v15_1", initialSession);
   const [tab, setTab] = useState<"plan" | "strategy" | "weekly" | "history">("plan");
 
-  // 目的・目標
+  // 目的_目標
   function addGoal() {
     const title = prompt("目標を入力（例：共通テストで80点）");
     if (!title) return;
@@ -658,10 +658,10 @@ export default function PlannerUI() {
 
             {/* 問題解決タブ */}
             <TabsContent value="plan" className="relative mt-6 space-y-6 data-[state=inactive]:hidden">
-              {/* 目的・目標 */}
+              {/* 目的_目標 */}
               <Card className="bg-white">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">目的・目標</CardTitle>
+                  <CardTitle className="flex items-center gap-2">目的_目標</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid md:grid-cols-3 gap-4">
@@ -790,7 +790,7 @@ export default function PlannerUI() {
                   {session.score >= session.target ? (
                     <div className="rounded-2xl border p-4" style={{ borderColor: "#e6b800", background: "#fff8db" }}>
                       <div className="flex items-center gap-2 mb-2"><Trophy className="w-5 h-5" /><b>目標達成！</b></div>
-                      <p className="text-sm mb-2">📝 振り返り・反省・次目標をメモできます。</p>
+                      <p className="text-sm mb-2">📝 振り返り_反省_次目標をメモできます。</p>
                       <Textarea placeholder="良かった点 / 反省点 / 次の目標…" value={session.memo} onChange={(e) => setSession((s) => ({ ...s, memo: e.target.value }))} className="bg-white" />
                       <div className="mt-3 flex gap-2">
                         <Button onClick={resetToRetry} className="text-white" style={{ background: PRIMARY }}>
